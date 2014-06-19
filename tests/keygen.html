@@ -13,6 +13,7 @@
   <script type="text/javascript" src="forge/asn1.js"></script>
   <script type="text/javascript" src="forge/pem.js"></script>
   <script type="text/javascript" src="forge/rsa.js"></script>
+  <script type="text/javascript" src="forge/prime.js"></script>
 </head>
 
 <body>
@@ -20,7 +21,7 @@
 <script type="text/javascript">
 
 function async() {
-  var bits = 2048;
+  var bits = 1024;
   console.log('Generating ' + bits + '-bit key-pair...');
   var st = +new Date();
   forge.pki.rsa.generateKeyPair({
@@ -37,7 +38,7 @@ function async() {
 }
 
 function sync() {
-  var bits = 2048;
+  var bits = 1024;
   console.log('Generating ' + bits + '-bit key-pair...');
   var st = +new Date();
   var keypair = forge.pki.rsa.generateKeyPair(bits);
@@ -47,8 +48,23 @@ function sync() {
   //console.log('public', forge.pki.publicKeyToPem(keypair.publicKey));
 }
 
-async();
+//async();
 //sync();
+
+var st = +new Date();
+forge.prime.generateProbablePrime(
+  1024, {
+    algorithm: {
+      name: 'PRIMEINC',
+      options: {
+        //workers: 8
+      }
+    }
+  }, function(err, num) {
+    var et = +new Date();
+    console.log('num', num.toString(16));
+    console.log('time', (et - st) + 'ms');
+  });
 
 </script>
 
