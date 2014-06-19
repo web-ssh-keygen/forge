@@ -71,6 +71,6 @@
     "bundle": "r.js -o minify.js optimize=none out=js/forge.bundle.js",
     "minify": "r.js -o minify.js",
     "jshint": "jshint *.js lib/*.js minify.js nodejs/*.js nodejs/test/*.js nodejs/ui/*.js tests/*.js",
-    "postinstall: "mkdir js && cp lib/*.js js/"
+    "postinstall": "mkdir js && cp lib/*.js js/"
   }
 }
