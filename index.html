@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ssh-keygen</title>
+    <style>
+output {
+  display: block;
+  margin: 2em;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 72em;
+  box-sizing: border-box;
+  position: relative;
+}
+label {
+  white-space: nowrap;
+}
+span.ellipsis-inline {
+  white-space: pre;
+  text-overflow: ellipsis;
+  width: 1em;
+  display: inline-block;
+  overflow: hidden;
+  padding: 0 5px;
+}
+span.ellipsis-block {
+  white-space: pre;
+  text-overflow: ellipsis;
+  width: 1em;
+  height: 1.5em;
+  display: block;
+  overflow: hidden;
+  padding: 5px 0;
+}
+span.emphasize {
+  font-weight: bold;
+}
+</style>
+  </head>
+  <body>
+    <h1>ssh-keygen</h1>
+    <button id="gen">ssh-keygen</button>
+    <label>bits: <input type="text" id="bits" value="2048"/></label>
+    <label>key name: <input type="text" id="keyname"/></label>
+    <label>passphrase: <input type="password" id="password"/></label>
+
+    <div id="pubdiv">
+    <h2>pubkey</h2>
+    <button class="copy" disabled>copy</button>
+    <button class="download" data-name="id_rsa.pub" disabled>download id_rsa.pub</button>
+    <output id="pub">pubkey</output>
+    </div>
+
+    <div id="privdiv">
+    <h2>private key</h2>
+    <button class="copy" disabled>copy</button>
+    <button class="download" data-name="id_rsa" disabled>download id_rsa</button>
+    <output id="priv">private key</output>
+    </div>
+
+    <div id="puttydiv">
+    <h2>putty key</h2>
+    <button class="copy" disabled>copy</button>
+    <button class="download" data-name="id_rsa.ppk" disabled>download id_rsa.ppk</button>
+    <output id="putty">putty key</output>
+    </div>
+
+    <div id="scripts">
+    <script src="js/util.js"></script>
+    <script src="js/sha256.js"></script>
+    <script src="js/cipher.js"></script>
+    <script src="js/cipherModes.js"></script>
+    <script src="js/aes.js"></script>
+    <script src="js/prng.js"></script>
+    <script src="js/random.js"></script>
+    <script src="js/jsbn.js"></script>
+    <script src="js/asn1.js"></script>
+    <script src="js/pem.js"></script>
+    <script src="js/prime.js"></script>
+    <script src="js/rsa.js"></script>
+    <script src="js/pki.js"></script>
+    <script src="js/oids.js"></script>
+    <script src="js/x509.js"></script>
+    <script src="js/hmac.js"></script>
+    <script src="js/md5.js"></script>
+    <script src="js/sha1.js"></script>
+    <script src="js/ssh.js"></script>
+
+    <script src="FileSaver.js"></script>
+
+    <script>
++function(){
+"use strict";
+
+document.getElementById('keyname').value = 'key-'+Date.now();
+
+function setGenStatus(generating) {
+  var gen = document.getElementById('gen');
+  if(generating) {
+    gen.setAttribute('disabled', true);
+    gen.textContent = 'generating...';
+  } else {
+    gen.removeAttribute('disabled');
+    gen.textContent = 'generate';
+  }
+}
+
+function enable_saving() {
+  for(let button of document.querySelectorAll('.copy, .download')) {
+    button.removeAttribute('disabled');
+  }
+}
+
+function copy(elem) {
+  var range = document.createRange();
+  range.selectNodeContents(elem);
+  window.getSelection().addRange(range);
+  var successful = document.execCommand('copy');
+  window.getSelection().removeAllRanges();
+  return successful;
+}
+
+for(let button of document.querySelectorAll('.copy')) {
+  button.addEventListener('click', function(e) {
+    copy(e.target.parentNode.querySelector('output'));
+  });
+}
+for(let button of document.querySelectorAll('.download')) {
+  button.addEventListener('click', function(e) {
+    var text = e.target.parentNode.querySelector('output').textContent;
+    var blob = new Blob([text], {type: "application/octet-stream"});
+    saveAs(blob, e.target.getAttribute('data-name'));
+  });
+}
+
+// hide extra text for conciseness and privacy
+function textspan(text, clss) {
+  var span = document.createElement('span');
+  if(clss) {
+    span.className = clss;
+  }
+  span.appendChild(document.createTextNode(text));
+  return span;
+}
+function show_pub(text) {
+  var out = document.getElementById('pub');
+  out.innerHTML = '';
+  var match = text.match(/^(.*?)([A-Za-z0-9+/=]{14})([A-Za-z0-9+/=]{20,})([A-Za-z0-9+/=]{14})(.*\r?\n?)$/);
+  out.appendChild(textspan(match[1], 'emphasize'));
+  out.appendChild(textspan(match[2]));
+  out.appendChild(textspan(match[3], 'ellipsis-inline'));
+  out.appendChild(textspan(match[4]));
+  out.appendChild(textspan(match[5], 'emphasize'));
+}
+function show_priv(text) {
+  var out = document.getElementById('priv');
+  out.innerHTML = '';
+  var match = text.match(/^([\s\S]*?)(\r?\n[A-Za-z0-9+/=]{24})([A-Za-z0-9+/=\r\n]{20,})([A-Za-z0-9+/=]{24})([\s\S]*)$/);
+  out.appendChild(textspan(match[1], 'emphasize'));
+  out.appendChild(textspan(match[2]));
+  out.appendChild(textspan(match[3], 'ellipsis-block'));
+  out.appendChild(textspan(match[4]));
+  out.appendChild(textspan(match[5], 'emphasize'));
+}
+function show_putty(text) {
+  var out = document.getElementById('putty');
+  out.innerHTML = '';
+  var match = text.match(/^([\s\S]*?)(\r?\nPublic-Lines: [0-9]+\r?\n)([A-Za-z0-9+/=]{24})([A-Za-z0-9+/=\r\n]{20,})([A-Za-z0-9+/=]{24})(\r?\nPrivate-Lines: [0-9]+\r?\n)([A-Za-z0-9+/=]{24})([A-Za-z0-9+/=\r\n]{20,})([A-Za-z0-9+/=]{24})([\s\S]*)$/);
+  out.appendChild(textspan(match[1], 'emphasize'));
+  out.appendChild(textspan(match[2], 'emphasize'));
+  out.appendChild(textspan(match[3]));
+  out.appendChild(textspan(match[4], 'ellipsis-block'));
+  out.appendChild(textspan(match[5]));
+  out.appendChild(textspan(match[6], 'emphasize'));
+  out.appendChild(textspan(match[7]));
+  out.appendChild(textspan(match[8], 'ellipsis-block'));
+  out.appendChild(textspan(match[9]));
+  out.appendChild(textspan(match[10], 'emphasize'));
+}
+
+function generate() {
+  var keysize = parseInt(document.getElementById('bits').value, 10);
+  var keyname = document.getElementById('keyname').value;
+  var passphrase = document.getElementById('password').value;
+
+  setGenStatus(true);
+  var keygen = forge.pki.rsa.createKeyPairGenerationState(keysize);
+  var step = function() {
+    // 70 ms steps
+    if(forge.pki.rsa.stepKeyPairGenerationState(keygen, 70)) {
+      setGenStatus(false);
+      var id_rsa = forge.ssh.privateKeyToOpenSSH(keygen.keys.privateKey, passphrase);
+      var id_rsa_pub = forge.ssh.publicKeyToOpenSSH(keygen.keys.publicKey, keyname);
+      var id_rsa_ppk = forge.ssh.privateKeyToPutty(keygen.keys.privateKey, passphrase, keyname);
+      show_pub(id_rsa_pub + '\n');
+      show_priv(id_rsa);
+      show_putty(id_rsa_ppk);
+      enable_saving();
+    } else {
+      setTimeout(step, 1);
+    }
+  };
+  setTimeout(step);
+}
+
+generate();
+document.getElementById('gen').addEventListener('click', generate);
+}();
+</script>
+    </div>
+  </body>
+</html>
