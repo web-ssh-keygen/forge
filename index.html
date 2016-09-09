@@ -68,6 +68,15 @@ span.emphasize {
     </div>
 
     <div id="scripts">
+    <script>
++function(){
+"use strict";
+
+if(!document.getElementById('keyname').value) {
+  document.getElementById('keyname').value = 'key-'+Date.now();
+}
+}();
+    </script>
     <script src="js/util.js"></script>
     <script src="js/sha256.js"></script>
     <script src="js/cipher.js"></script>
@@ -93,8 +102,6 @@ span.emphasize {
     <script>
 +function(){
 "use strict";
-
-document.getElementById('keyname').value = 'key-'+Date.now();
 
 function setGenStatus(generating) {
   var gen = document.getElementById('gen');
