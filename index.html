@@ -182,15 +182,14 @@ function show_putty(text) {
 
 function generate() {
   var keysize = parseInt(document.getElementById('bits').value, 10);
-  var keyname = document.getElementById('keyname').value;
-  var passphrase = document.getElementById('password').value;
-
   setGenStatus(true);
   var keygen = forge.pki.rsa.createKeyPairGenerationState(keysize);
   var step = function() {
     // 70 ms steps
     if(forge.pki.rsa.stepKeyPairGenerationState(keygen, 70)) {
       setGenStatus(false);
+      var keyname = document.getElementById('keyname').value;
+      var passphrase = document.getElementById('password').value;
       var id_rsa = forge.ssh.privateKeyToOpenSSH(keygen.keys.privateKey, passphrase);
       var id_rsa_pub = forge.ssh.publicKeyToOpenSSH(keygen.keys.publicKey, keyname);
       var id_rsa_ppk = forge.ssh.privateKeyToPutty(keygen.keys.privateKey, passphrase, keyname);
